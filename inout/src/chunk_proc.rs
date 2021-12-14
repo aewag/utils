@@ -15,6 +15,9 @@ pub enum InCtrl {
 // TODO: on GAT stabilization use it to ensure that
 // length of slices in `BodyFn` is equal
 pub trait ChunkProc<T>: Sized + sealed::Sealed {
+    /// Get input buffer.
+    fn get_input_buf(&mut self) -> &[T];
+
     /// Split data into chunks of length `N` and tail. Process them
     /// using `proc_chunk` and `proc_tail` respectively.
     fn process_chunks<N, S, GenInFn, BodyFn, ProcChunkFn, ProcTailFn>(
@@ -61,6 +64,10 @@ pub trait ChunkProc<T>: Sized + sealed::Sealed {
 impl<'a, T> sealed::Sealed for InOutBuf<'a, T> {}
 
 impl<'a, T> ChunkProc<T> for InOutBuf<'a, T> {
+    fn get_input_buf(&mut self) -> &[T] {
+        self.reborrow().get_in()
+    }
+
     fn process_chunks<N, S, GenInFn, BodyFn, ProcChunkFn, ProcTailFn>(
         self,
         mut state: S,
@@ -109,6 +116,10 @@ impl<'a, T> ChunkProc<T> for InOutBuf<'a, T> {
 impl<'a, T> sealed::Sealed for &'a [T] {}
 
 impl<'a, T> ChunkProc<T> for &'a [T] {
+    fn get_input_buf(&mut self) -> &[T] {
+        self
+    }
+
     fn process_chunks<N, S, GenInFn, BodyFn, ProcChunkFn, ProcTailFn>(
         self,
         mut state: S,
@@ -155,6 +166,10 @@ impl<'a, T> ChunkProc<T> for &'a [T] {
 impl<'a, T> sealed::Sealed for &'a mut [T] {}
 
 impl<'a, T> ChunkProc<T> for &'a mut [T] {
+    fn get_input_buf(&mut self) -> &[T] {
+        self
+    }
+
     fn process_chunks<N, S, GenInFn, BodyFn, ProcChunkFn, ProcTailFn>(
         self,
         mut state: S,
