@@ -231,49 +231,6 @@ impl<'a, T> InOutBuf<'a, T> {
             _pd: PhantomData,
         }
     }
-
-    /// Process data in buffer in chunks of size `N`.
-    // TODO: decribe behavior and arguments in detail
-    #[inline(always)]
-    pub fn process_chunks<N, S, PRE, POST, PC, PT>(
-        self,
-        mut state: S,
-        mut pre_fn: PRE,
-        mut post_fn: POST,
-        mut proc_chunk: PC,
-        mut proc_tail: PT,
-    ) where
-        T: Default,
-        N: ArrayLength<T>,
-        PRE: FnMut(InTmpOutBuf<'_, T>) -> InSrc,
-        POST: FnMut(InTmpOutBuf<'_, T>),
-        PC: FnMut(&mut S, InOut<'_, GenericArray<T, N>>),
-        PT: FnMut(&mut S, InOutBuf<'_, T>),
-    {
-        let (chunks, tail) = self.into_chunks::<N>();
-        for chunk in chunks {
-            let mut tmp = GenericArray::<T, N>::default();
-            let mut buf = chunk.extend_with_tmp(&mut tmp);
-            let chunk = match pre_fn(buf.reborrow().into_buf()) {
-                InSrc::In => buf.reborrow().inout_from_intmp(),
-                InSrc::Tmp => buf.reborrow().inout_from_tmptmp(),
-            };
-            proc_chunk(&mut state, chunk);
-            post_fn(buf.into_buf());
-        }
-
-        if tail.is_empty() {
-            return;
-        }
-        let mut tmp = GenericArray::<T, N>::default();
-        let mut buf = tail.extend_with_tmp(&mut tmp);
-        let tail = match pre_fn(buf.reborrow()) {
-            InSrc::In => buf.reborrow().inout_from_intmp(),
-            InSrc::Tmp => buf.reborrow().inout_from_tmptmp(),
-        };
-        proc_tail(&mut state, tail);
-        post_fn(buf);
-    }
 }
 
 impl<'a> InOutBuf<'a, u8> {
@@ -338,14 +295,6 @@ impl<'a, T> Iterator for InOutBufIter<'a, T> {
         self.pos += 1;
         Some(res)
     }
-}
-
-/// The enum which controls which slice to use from `InTmpOutBuf` as input.
-pub enum InSrc {
-    /// Use input slice as input.
-    In,
-    /// Use temporary slice as input.
-    Tmp,
 }
 
 /// The error returned when slice can not be converted into array.

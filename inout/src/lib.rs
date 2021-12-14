@@ -10,12 +10,14 @@
 #![allow(clippy::needless_lifetimes)]
 #![warn(missing_docs, rust_2018_idioms)]
 
+mod chunk_proc;
 mod inout;
 mod inout_buf;
 mod intmpout;
 mod intmpout_buf;
 
 pub use crate::inout::InOut;
-pub use inout_buf::{InOutBuf, InOutBufIter, InSrc, IntoArrayError, NotEqualError};
+pub use chunk_proc::{ChunkProc, InCtrl};
+pub use inout_buf::{InOutBuf, InOutBufIter, IntoArrayError, NotEqualError};
 pub use intmpout::InTmpOut;
 pub use intmpout_buf::InTmpOutBuf;
