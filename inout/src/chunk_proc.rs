@@ -1,6 +1,6 @@
 use crate::{InOut, InOutBuf};
 use core::slice;
-use generic_array::{ArrayLength, GenericArray};
+use generic_array::{ArrayLength, GenericArray, typenum::NonZero};
 
 /// The enum which controls which slice to use as input in the
 /// [`ChunkProc`] trait.
@@ -26,7 +26,7 @@ pub trait ChunkProc<T>: Sized + sealed::Sealed {
         proc_tail: ProcTailFn,
     ) where
         T: Default,
-        N: ArrayLength<T>,
+        N: ArrayLength<T> + NonZero,
         GenInFn: FnMut(&mut [T]) -> InCtrl,
         BodyFn: FnMut(Self, &mut [T]),
         ProcChunkFn: FnMut(&mut S, InOut<'_, GenericArray<T, N>>),
@@ -43,7 +43,7 @@ pub trait ChunkProc<T>: Sized + sealed::Sealed {
         mut gen_slice: GenSliceFn,
     ) where
         T: Default,
-        N: ArrayLength<T>,
+        N: ArrayLength<T> + NonZero,
         BodyFn: FnMut(Self, &mut [T]),
         GenChunkFn: FnMut(&mut S, &mut GenericArray<T, N>),
         GenSliceFn: FnMut(&mut S, &mut [T]),
@@ -70,28 +70,23 @@ impl<'a, T> ChunkProc<T> for InOutBuf<'a, T> {
         mut proc_tail: ProcTailFn,
     ) where
         T: Default,
-        N: ArrayLength<T>,
+        N: ArrayLength<T> + NonZero,
         GenInFn: FnMut(&mut [T]) -> InCtrl,
         BodyFn: FnMut(Self, &mut [T]),
         ProcChunkFn: FnMut(&mut S, InOut<'_, GenericArray<T, N>>),
         ProcTailFn: FnMut(&mut S, InOutBuf<'_, T>),
     {
-        let mut tail = if N::USIZE > 1 {
-            let (chunks, tail) = self.into_chunks::<N>();
-            for mut chunk in chunks {
-                let mut tmp = GenericArray::<T, N>::default();
-                let in_val = chunk.reborrow().get_in();
-                let proc_val = match gen_in(&mut tmp) {
-                    InCtrl::In => InOut::from((in_val, &mut tmp)),
-                    InCtrl::Tmp => InOut::from(&mut tmp),
-                };
-                proc_chunk(&mut state, proc_val);
-                body(chunk.into_buf(), &mut tmp);
-            }
-            tail
-        } else {
-            self
-        };
+        let (chunks, mut tail) = self.into_chunks::<N>();
+        for mut chunk in chunks {
+            let mut tmp = GenericArray::<T, N>::default();
+            let in_val = chunk.reborrow().get_in();
+            let proc_val = match gen_in(&mut tmp) {
+                InCtrl::In => InOut::from((in_val, &mut tmp)),
+                InCtrl::Tmp => InOut::from(&mut tmp),
+            };
+            proc_chunk(&mut state, proc_val);
+            body(chunk.into_buf(), &mut tmp);
+        }
 
         if tail.is_empty() {
             return;
@@ -123,27 +118,22 @@ impl<'a, T> ChunkProc<T> for &'a [T] {
         mut proc_tail: ProcTailFn,
     ) where
         T: Default,
-        N: ArrayLength<T>,
+        N: ArrayLength<T> + NonZero,
         GenInFn: FnMut(&mut [T]) -> InCtrl,
         BodyFn: FnMut(Self, &mut [T]),
         ProcChunkFn: FnMut(&mut S, InOut<'_, GenericArray<T, N>>),
         ProcTailFn: FnMut(&mut S, InOutBuf<'_, T>),
     {
-        let tail = if N::USIZE > 1 {
-            let (chunks, tail) = into_chunks::<_, N>(self);
-            for chunk in chunks {
-                let mut tmp = GenericArray::<T, N>::default();
-                let proc_val = match gen_in(&mut tmp) {
-                    InCtrl::In => InOut::from((chunk, &mut tmp)),
-                    InCtrl::Tmp => InOut::from(&mut tmp),
-                };
-                proc_chunk(&mut state, proc_val);
-                body(chunk, &mut tmp);
-            }
-            tail
-        } else {
-            self
-        };
+        let (chunks, tail) = into_chunks::<_, N>(self);
+        for chunk in chunks {
+            let mut tmp = GenericArray::<T, N>::default();
+            let proc_val = match gen_in(&mut tmp) {
+                InCtrl::In => InOut::from((chunk, &mut tmp)),
+                InCtrl::Tmp => InOut::from(&mut tmp),
+            };
+            proc_chunk(&mut state, proc_val);
+            body(chunk, &mut tmp);
+        }
 
         if tail.is_empty() {
             return;
@@ -174,27 +164,22 @@ impl<'a, T> ChunkProc<T> for &'a mut [T] {
         mut proc_tail: ProcTailFn,
     ) where
         T: Default,
-        N: ArrayLength<T>,
+        N: ArrayLength<T> + NonZero,
         GenInFn: FnMut(&mut [T]) -> InCtrl,
         BodyFn: FnMut(Self, &mut [T]),
         ProcChunkFn: FnMut(&mut S, InOut<'_, GenericArray<T, N>>),
         ProcTailFn: FnMut(&mut S, InOutBuf<'_, T>),
     {
-        let tail = if N::USIZE > 1 {
-            let (chunks, tail) = into_chunks_mut::<_, N>(self);
-            for chunk in chunks {
-                let mut tmp = GenericArray::<T, N>::default();
-                let proc_val = match gen_in(&mut tmp) {
-                    InCtrl::In => InOut::from((&*chunk, &mut tmp)),
-                    InCtrl::Tmp => InOut::from(&mut tmp),
-                };
-                proc_chunk(&mut state, proc_val);
-                body(chunk, &mut tmp);
-            }
-            tail
-        } else {
-            self
-        };
+        let (chunks, tail) = into_chunks_mut::<_, N>(self);
+        for chunk in chunks {
+            let mut tmp = GenericArray::<T, N>::default();
+            let proc_val = match gen_in(&mut tmp) {
+                InCtrl::In => InOut::from((&*chunk, &mut tmp)),
+                InCtrl::Tmp => InOut::from(&mut tmp),
+            };
+            proc_chunk(&mut state, proc_val);
+            body(chunk, &mut tmp);
+        }
 
         if tail.is_empty() {
             return;
