@@ -233,6 +233,30 @@ impl<'a, T> InOutBuf<'a, T> {
     }
 }
 
+impl<'a, N: ArrayLength<u8>> InOutBuf<'a, GenericArray<u8, N>> {
+    /// XORs data fron input and temporary slices and writes result to output
+    /// slice.
+    #[inline(always)]
+    pub fn xor2out(&mut self, tmp: &[GenericArray<u8, N>]) {
+        use core::ptr::{read, write};
+        assert_eq!(tmp.len(), self.len());
+        unsafe {
+            let in_ptr = self.in_ptr;
+            let tmp_ptr = tmp.as_ptr();
+            let out_ptr = self.out_ptr;
+            for i in 0..self.len() {
+                let a = read(in_ptr.add(i));
+                let b = read(tmp_ptr.add(i));
+                let mut res = GenericArray::<u8, N>::default();
+                for j in 0..N::USIZE {
+                    res[j] = a[j] ^ b[j];
+                }
+                write(out_ptr.add(i), res);
+            }
+        }
+    }
+}
+
 impl<'a> InOutBuf<'a, u8> {
     /// XORs `data` with values behind the input slice and write
     /// result to the output slice.

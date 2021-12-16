@@ -1,6 +1,6 @@
 use crate::{InOut, InOutBuf};
 use core::slice;
-use generic_array::{ArrayLength, GenericArray, typenum::NonZero};
+use generic_array::{typenum::NonZero, ArrayLength, GenericArray};
 
 /// The enum which controls which slice to use as input in the
 /// [`ChunkProc`] trait.
