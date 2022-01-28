@@ -640,7 +640,10 @@ unsafe fn volatile_set<T: Copy + Sized>(dst: *mut T, src: T, count: usize) {
 }
 
 /// `PhantomData` is always zero sized so provide a Zeroize implementation.
-impl<Z> Zeroize for PhantomData<Z> {
+impl<Z> Zeroize for PhantomData<Z>
+where
+    Z: Zeroize,
+{
     fn zeroize(&mut self) {}
 }
 /// `PhantomData` is always zero sized so provide a ZeroizeOnDrop implementation.
