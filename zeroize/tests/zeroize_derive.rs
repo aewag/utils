@@ -2,6 +2,7 @@
 
 #[cfg(feature = "zeroize_derive")]
 mod custom_derive_tests {
+    use core::marker::PhantomData;
     use zeroize::{Zeroize, ZeroizeOnDrop};
 
     #[test]
@@ -23,6 +24,7 @@ mod custom_derive_tests {
             bytearray: [u8; 3],
             number: usize,
             boolean: bool,
+            phantom: PhantomData<u8>,
         }
 
         let mut value = Z {
@@ -31,6 +33,7 @@ mod custom_derive_tests {
             bytearray: [4, 5, 6],
             number: 42,
             boolean: true,
+            phantom: PhantomData,
         };
 
         value.zeroize();
